@@ -50,6 +50,9 @@ dependencies {
 
     // FirebaseUI Auth
     compile 'com.firebaseui:firebase-ui-auth:2.0.1'
+
+    // Firebase storage
+    compile 'com.google.firebase:firebase-storage:11.0.1'
 }
 
 apply plugin: 'com.google.gms.google-services'
