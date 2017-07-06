@@ -53,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     public static final String ANONYMOUS = "anonymous";
     public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
     private static final int REQUEST_CODE_SIGN_IN = 1337;
+    private static final int REQUEST_CODE_PHOTO_PICKER = 2;
 
     private ListView mMessageListView;
     private MessageAdapter mMessageAdapter;
@@ -100,8 +101,14 @@ public class MainActivity extends AppCompatActivity {
         // ImagePickerButton shows an image picker to upload a image for a message
         mPhotoPickerButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                // TODO: Fire an intent to show an image picker
+            public void onClick(View view) { // start an image picker
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("image/*");
+                intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+                startActivityForResult(
+                        Intent.createChooser(intent, "Send a photo"),
+                        REQUEST_CODE_PHOTO_PICKER
+                );
             }
         });
 
@@ -205,12 +212,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_SIGN_IN){
-            if (resultCode == RESULT_OK){ // login was successful
-
-            } else if (resultCode == RESULT_CANCELED){ // login was canceled
-                finish();
-            }
+        switch (requestCode){
+            case REQUEST_CODE_SIGN_IN:
+                if (resultCode == RESULT_CANCELED){ // login was canceled
+                    finish();
+                }
+                break;
+            case REQUEST_CODE_PHOTO_PICKER:
+                // TODO: send the photo to firebase storage
+                break;
         }
     }
 
