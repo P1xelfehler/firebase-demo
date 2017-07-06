@@ -241,8 +241,10 @@ public class MainActivity extends AppCompatActivity {
                                     // upload was successful, get the download URL
                                     Uri downloadUrl = taskSnapshot.getDownloadUrl();
                                     // generate and send the message with the image url
-                                    FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, downloadUrl.toString());
-                                    mMessagesDatabaseReference.push().setValue(friendlyMessage);
+                                    if (downloadUrl != null) {
+                                        FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, downloadUrl.toString());
+                                        mMessagesDatabaseReference.push().setValue(friendlyMessage);
+                                    }
                                 }
                             });
                 }
