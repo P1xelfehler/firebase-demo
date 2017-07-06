@@ -45,7 +45,8 @@ dependencies {
     // Firebase database
     compile 'com.google.firebase:firebase-database:11.0.1'
 
-    // FirebaseUI Auth
+    // Firebase Auth
+    compile 'com.google.firebase:firebase-auth:11.0.1'
     compile 'com.firebaseui:firebase-ui-auth:2.0.1'
 }
 
