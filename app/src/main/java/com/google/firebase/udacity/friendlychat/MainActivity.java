@@ -141,48 +141,22 @@ public class MainActivity extends AppCompatActivity {
                 mMessageEditText.setText("");
             }
         });
-        // register a database listener for the messages
-        mChildEventListener = new ChildEventListener() {
-            @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
-                mMessageAdapter.add(friendlyMessage);
-            }
-
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
-
-            }
-
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Toast.makeText(MainActivity.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        };
-        mMessagesDatabaseReference.addChildEventListener(mChildEventListener);
         // Authentication state change listener
         mAuthStateListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 FirebaseUser user = firebaseAuth.getCurrentUser();
                 if (user != null) { // user is signed in
+                    signInInitialize(user.getDisplayName());
                     Toast.makeText(MainActivity.this,
                             "You are now signed in! Congratulations! :)",
                             Toast.LENGTH_LONG).show();
                 } else { // user is signed out
+                    signOutCleanUp();
                     startActivityForResult(
                             AuthUI.getInstance()
                                     .createSignInIntentBuilder()
+                                    .setIsSmartLockEnabled(false) // disable auto sign in
                                     .setAvailableProviders(
                                             Arrays.asList(
                                                     new AuthUI.IdpConfig.Builder(AuthUI.EMAIL_PROVIDER).build(), // email login
@@ -215,13 +189,58 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        mMessagesDatabaseReference.removeEventListener(mChildEventListener);
-    }
-
-    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         return super.onOptionsItemSelected(item);
+    }
+
+    private void signInInitialize(String username){
+        mUsername = username; // set the correct username for the chat
+        attachDatabaseReadListener();
+    }
+
+    private void signOutCleanUp(){
+        mUsername = ANONYMOUS; // change username back to anonymous
+        mMessageAdapter.clear(); // clear the message list
+        detachDatabaseReadListener();
+    }
+
+    private void attachDatabaseReadListener(){
+        if (mChildEventListener == null) { // only attach new listener if no listener is already attached!
+            mChildEventListener = new ChildEventListener() {
+                @Override
+                public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                    FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
+                    mMessageAdapter.add(friendlyMessage);
+                }
+
+                @Override
+                public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+                }
+
+                @Override
+                public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+                }
+
+                @Override
+                public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    Toast.makeText(MainActivity.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            };
+            mMessagesDatabaseReference.addChildEventListener(mChildEventListener);
+        }
+    }
+
+    private void detachDatabaseReadListener(){
+        if (mChildEventListener != null){ // only detach if a listener is attached
+            mMessagesDatabaseReference.removeEventListener(mChildEventListener);
+            mChildEventListener = null; // make it null to indicate that it is detached
+        }
     }
 }
