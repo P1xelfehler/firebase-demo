@@ -195,6 +195,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.sign_out_menu){ // sign out
+            AuthUI.getInstance().signOut(this);
+            return true;
+        }
         return super.onOptionsItemSelected(item);
     }
 
