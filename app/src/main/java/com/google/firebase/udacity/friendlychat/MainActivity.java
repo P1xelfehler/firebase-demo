@@ -16,6 +16,7 @@
 package com.google.firebase.udacity.friendlychat;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -34,6 +35,7 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.firebase.ui.auth.AuthUI;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -41,6 +43,9 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,10 +53,9 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "MainActivity";
-
     public static final String ANONYMOUS = "anonymous";
     public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
+    private static final String TAG = "MainActivity";
     private static final int REQUEST_CODE_SIGN_IN = 1337;
     private static final int REQUEST_CODE_PHOTO_PICKER = 2;
 
@@ -70,6 +74,8 @@ public class MainActivity extends AppCompatActivity {
     private ChildEventListener mChildEventListener;
     private FirebaseAuth mFirebaseAuth;
     private FirebaseAuth.AuthStateListener mAuthStateListener;
+    private FirebaseStorage mFirebaseStorage;
+    private StorageReference mChatPhotosStorageReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,8 +86,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize Firebase components
         mFirebaseDatabase = FirebaseDatabase.getInstance();
-        mMessagesDatabaseReference = mFirebaseDatabase.getReference().child("messages");
         mFirebaseAuth = FirebaseAuth.getInstance();
+        mFirebaseStorage = FirebaseStorage.getInstance();
+        mMessagesDatabaseReference = mFirebaseDatabase.getReference().child("messages");
+        mChatPhotosStorageReference = mFirebaseStorage.getReference().child("chat_photos");
 
         // Initialize references to views
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
@@ -202,7 +210,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.sign_out_menu){ // sign out
+        if (item.getItemId() == R.id.sign_out_menu) { // sign out
             AuthUI.getInstance().signOut(this);
             return true;
         }
@@ -212,30 +220,49 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        switch (requestCode){
+        switch (requestCode) {
             case REQUEST_CODE_SIGN_IN:
-                if (resultCode == RESULT_CANCELED){ // login was canceled
+                if (resultCode == RESULT_CANCELED) { // login was canceled
                     finish();
                 }
                 break;
             case REQUEST_CODE_PHOTO_PICKER:
-                // TODO: send the photo to firebase storage
+                if (resultCode == RESULT_OK) { // image has been selected
+                    Uri imageUri = data.getData();
+                    // Get a reference to the file it will be uploaded to on the server
+                    // We are using the original file name here.
+                    String fileName = imageUri.getLastPathSegment();
+                    StorageReference destRef = mChatPhotosStorageReference.child(fileName);
+                    // Upload the file to firebase storage
+                    destRef.putFile(imageUri)
+                            .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                                @Override
+                                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                    // upload was successful, get the download URL
+                                    Uri downloadUrl = taskSnapshot.getDownloadUrl();
+                                    // generate and send the message with the image url
+                                    FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, downloadUrl.toString());
+                                    mMessagesDatabaseReference.push().setValue(friendlyMessage);
+                                }
+                            });
+                }
+
                 break;
         }
     }
 
-    private void signInInitialize(String username){
+    private void signInInitialize(String username) {
         mUsername = username; // set the correct username for the chat
         attachDatabaseReadListener();
     }
 
-    private void signOutCleanUp(){
+    private void signOutCleanUp() {
         mUsername = ANONYMOUS; // change username back to anonymous
         mMessageAdapter.clear(); // clear the message list
         detachDatabaseReadListener();
     }
 
-    private void attachDatabaseReadListener(){
+    private void attachDatabaseReadListener() {
         if (mChildEventListener == null) { // only attach new listener if no listener is already attached!
             mChildEventListener = new ChildEventListener() {
                 @Override
@@ -268,8 +295,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void detachDatabaseReadListener(){
-        if (mChildEventListener != null){ // only detach if a listener is attached
+    private void detachDatabaseReadListener() {
+        if (mChildEventListener != null) { // only detach if a listener is attached
             mMessagesDatabaseReference.removeEventListener(mChildEventListener);
             mChildEventListener = null; // make it null to indicate that it is detached
         }
